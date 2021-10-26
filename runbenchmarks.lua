@@ -166,15 +166,15 @@ end
 
 -- Creates and saves the gnuplot data file
 local function create_data_file(results)
-    local data = 'test\t'
+    local data = string.format("%-18s", 'test')
     for _, binary in ipairs(binaries) do
-        data = data .. binary[1] .. '\t'
+        data = data..string.format("%-18s", binary[1])
     end
     data = data .. '\n'
     for i, test in ipairs(tests) do
-        data = data .. test[1] .. '\t'
+        data = data .. string.format("%-18s", test[1])
         for j, _ in ipairs(binaries) do
-            data = data .. results[i][j] .. '\t' 
+            data = data .. string.format("%-18s", results[i][j])
         end
         data = data .. '\n'
     end
