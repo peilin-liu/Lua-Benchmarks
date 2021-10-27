@@ -4,28 +4,28 @@
 
 -- List of binaries that will be tested
 local binaries = {
-    { 'lua-5.3.4', 'lua' },
-    { 'luajit-2.0.4-interp', 'luajit -joff' },
-    { 'luajit-2.0.4', 'luajit' },
+    { 'lua-5.3.6', 'lua' },
+    --{ 'luajit-2.0.4-interp', 'luajit -joff' },
+    --{ 'luajit-2.0.4', 'luajit' },
 }
 
 -- List of tests
-local tests_root = './'
+local tests_root = '/data/code/Lua-Benchmarks-Jit/'
 local tests = {
-    { 'ack', 'ack.lua 3 10' },
-    { 'fixpoint-fact', 'fixpoint-fact.lua 3000' },
-    { 'heapsort', 'heapsort.lua 10 250000' },
+    { 'ack', 'ack.lua', {3, 10}},
+    { 'fixpoint-fact', 'fixpoint-fact.lua',  {3000} },
+    { 'heapsort', 'heapsort.lua', {10, 250000} },
     { 'mandelbrot', 'mandel.lua' },
     { 'juliaset', 'qt.lua' },
-    { 'queen', 'queen.lua 12' },
-    { 'sieve', 'sieve.lua 5000' }, -- Sieve of Eratosthenes
-    { 'binary', 'binary-trees.lua 15' },
-    { 'n-body', 'n-body.lua 1000000' },
-    { 'fannkuch', 'fannkuch-redux.lua 10' },
-    { 'fasta', 'fasta.lua 2500000' },
-    { 'k-nucleotide', 'k-nucleotide.lua < fasta1000000.txt' },
+    { 'queen', 'queen.lua', {12}},
+    { 'sieve', 'sieve.lua', {5000} }, -- Sieve of Eratosthenes
+    { 'binary', 'binary-trees.lua', {15} },
+    { 'n-body', 'n-body.lua', {1000000} },
+    { 'fannkuch', 'fannkuch-redux.lua', {10}},
+    { 'fasta', 'fasta.lua', {2500000} },
+    --{ 'k-nucleotide', 'k-nucleotide.lua', {'<', 'fasta1000000.txt'} },
     --{ 'regex-dna', 'regex-dna.lua < fasta1000000.txt' },
-    { 'spectral-norm', 'spectral-norm.lua 1000' },
+    { 'spectral-norm', 'spectral-norm.lua', {1000} },
 }
 
 -- Command line arguments ------------------------------------------------------
@@ -92,13 +92,23 @@ end
 -- Implementation --------------------------------------------------------------
 
 -- Run the command a single time and returns the time elapsed
-local function measure(cmd)
+local function measure(cmd, run_args)
     local time_cmd = '{ TIMEFORMAT=\'%3R\'; time ' ..  cmd ..
             ' > /dev/null; } 2>&1'
-    local handle = io.popen(time_cmd)
-    local result = handle:read("*a")
-    local time_elapsed = tonumber(result)
-    handle:close()
+    local handle_f = loadfile(cmd)--io.popen(time_cmd)
+    local old_args = arg
+    arg = run_args or {}
+    local out_dev_null = io.open('/dev/null')
+    local out_old = io.output()
+    io.output(out_dev_null)
+    local s_time = os.clock()
+    local result = handle_f(table.unpack(arg))--handle:read("*a")
+    --dofile(cmd, table.unpack(run_args))
+    local time_elapsed = os.clock() -s_time --tonumber(result)
+    arg = old_args
+    io.output(out_old)
+    out_dev_null:close()
+    --handle:close()
     if not time_elapsed then
         error('Invalid output for "' .. cmd .. '":\n' .. result)
     end
@@ -106,11 +116,16 @@ local function measure(cmd)
 end
 
 -- Run the command $nruns and return the fastest time
-local function benchmark(cmd)
+local function benchmark(cmd, run_args)
     local min = 999
-    io.write('running "' .. cmd .. '"... ')
+    local arg_line = ""
+    for _, _arg in pairs(run_args or {}) do
+        arg_line = arg_line .." ".._arg
+    end
+
+    io.write('running "' .. cmd .. ' '..arg_line..'"... ')
     for _ = 1, nruns do
-        local time = measure(cmd)
+        local time = measure(cmd, run_args)
         min = math.min(min, time)
     end
     io.write('done\n')
@@ -134,9 +149,9 @@ local function run_all()
         local test_path = tests_root .. test[2]
         for j, binary in ipairs(binaries) do
             local cmd = binary[2] .. ' ' .. test_path
-            local ok, msg = pcall(function()
-                results[i][j] = benchmark(cmd)
-            end)
+            --local ok, msg = pcall(function()
+                results[i][j] = benchmark(test_path, test[3])
+            --end)
             if not ok and not supress_errors then
                 io.write('error:\n' .. msg .. '\n---\n')
             end
