@@ -36,6 +36,7 @@ local basename = 'results'
 local normalize = false
 local speedup = false
 local plot = true
+local result_mode = 0
 
 local usage = [[
 usage: lua ]] .. arg[0] .. [[ [options]
@@ -46,6 +47,7 @@ options:
     --normalize      normalize the result based on the first binary
     --speedup        compute the speedup based on the first binary
     --no-plot        don't create the plot with gnuplot
+    --result-m       result mode, 0 min, 1 max , 2 avg, (default = 0)
     --help           show this message
 ]]
 
@@ -79,6 +81,13 @@ local function parse_args()
             speedup = true
         elseif arg[i] == '--no-plot' then
             plot = false
+        elseif arg[i] == '--result-m' then
+            result_mode = tonumber(get_next_arg(i))
+            if result_mode < 1 then
+                result_mode = 0 
+            elseif result_mode > 1 then
+                result_mode = 2
+            end
         elseif arg[i] == '--help' then
             print(usage)
             os.exit()
@@ -119,6 +128,10 @@ end
 -- Run the command $nruns and return the fastest time
 local function benchmark(test, cmd, run_args)
     local min = 999
+    local max = 0
+    local total = 0
+    local result = 0
+
     local arg_line = ""
     for _, _arg in pairs(run_args or {}) do
         arg_line = arg_line .." ".._arg
@@ -128,9 +141,19 @@ local function benchmark(test, cmd, run_args)
     for _ = 1, nruns do
         local time = measure(test, cmd, run_args)
         min = math.min(min, time)
+        max = math.min(max, time)
+        total = total + time
     end
-    io.write('done\n')
-    return min
+    io.write('done mode is : ' .. result_mode .. '\n')
+   if result_mode == 1 then
+        result = max
+    elseif result_mode == 2 and nruns > 1 then
+        result = (total - max)/ (nruns -1)
+    else
+        result = min
+    end
+
+    return result
 end
 
 -- Create a matrix with n rows
