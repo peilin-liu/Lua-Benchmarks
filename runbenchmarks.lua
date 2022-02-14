@@ -92,10 +92,11 @@ end
 -- Implementation --------------------------------------------------------------
 
 -- Run the command a single time and returns the time elapsed
-local function measure(cmd, run_args)
+local function measure(test, cmd, run_args)
     local time_cmd = '{ TIMEFORMAT=\'%3R\'; time ' ..  cmd ..
             ' > /dev/null; } 2>&1'
-    local handle_f = loadfile(cmd)--io.popen(time_cmd)
+    local handle_f = test.handle_f or loadfile(cmd)--io.popen(time_cmd)
+    test.handle_f = handle_f
     local old_args = arg
     arg = run_args or {}
     local out_dev_null = io.open('/dev/null')
@@ -116,16 +117,16 @@ local function measure(cmd, run_args)
 end
 
 -- Run the command $nruns and return the fastest time
-local function benchmark(cmd, run_args)
+local function benchmark(test, cmd, run_args)
     local min = 999
     local arg_line = ""
     for _, _arg in pairs(run_args or {}) do
         arg_line = arg_line .." ".._arg
     end
 
-    io.write('running "' .. cmd .. ' '..arg_line..'"... ')
+    io.write('running "' .. cmd .. ' '..arg_line..'"... \n')
     for _ = 1, nruns do
-        local time = measure(cmd, run_args)
+        local time = measure(test, cmd, run_args)
         min = math.min(min, time)
     end
     io.write('done\n')
@@ -150,7 +151,7 @@ local function run_all()
         for j, binary in ipairs(binaries) do
             local cmd = binary[2] .. ' ' .. test_path
             --local ok, msg = pcall(function()
-                results[i][j] = benchmark(test_path, test[3])
+                results[i][j] = benchmark(test, test_path, test[3])
             --end)
             if not ok and not supress_errors then
                 io.write('error:\n' .. msg .. '\n---\n')
