@@ -131,6 +131,7 @@ local function benchmark(test, cmd, run_args)
     local max = 0
     local total = 0
     local result = 0
+    local records = {}
 
     local arg_line = ""
     for _, _arg in pairs(run_args or {}) do
@@ -141,11 +142,18 @@ local function benchmark(test, cmd, run_args)
     for _ = 1, nruns do
         local time = measure(test, cmd, run_args)
         min = math.min(min, time)
-        max = math.min(max, time)
+        max = math.max(max, time)
         total = total + time
+        records[#records + 1] = time;
     end
-    io.write('done mode is : ' .. result_mode .. '\n')
-   if result_mode == 1 then
+    io.write('done mode is : ' .. result_mode .. ' results :\n')
+    for index = 1, nruns do
+        io.write(records[index] .. ',')
+        if index ~= 0 and (index % 16 == 0 or index == nruns) then
+            io.write('\n')
+        end
+    end
+    if result_mode == 1 then
         result = max
     elseif result_mode == 2 and nruns > 1 then
         result = (total - max)/ (nruns -1)
@@ -248,6 +256,10 @@ local function main()
     parse_args()
     computer_info()
     setup()
+    --nogc("close");
+    --local isbggc = bggc("isrunning") and "open" or "close";
+    --print("isbggc status = "..isbggc);
+
     local results = run_all()
     teardown()
     local function f(v, base)
